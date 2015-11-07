@@ -9,6 +9,7 @@
     "mkdirp": "^0.5.1",
     "mongoose": "~3.8.8",
     "request": "^2.65.0",
+    "respawn": "^2.0.0",
     "selenium-webdriver": "^2.48.2",
     "slash": "^1.0.0"
   },
