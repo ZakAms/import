@@ -11,5 +11,8 @@
     "request": "^2.65.0",
     "selenium-webdriver": "^2.48.2",
     "slash": "^1.0.0"
+  },
+  "devDependencies": {
+    "lodash": "^3.10.1"
   }
 }
