@@ -20,23 +20,19 @@ var Node = require('./product.model').Node;
 var regex = new RegExp(/background\-image: url\((.*)\);$/);
 var filterRegex = new RegExp(/(.+)\s+\((\d+)\)/);
 
-var isElementPresent = function (driver)
-{
+var isElementPresent = function (driver) {
     //driver.manage().timeouts().implicitlyWait(7000);
     driver.manage().timeouts().implicitlyWait(0);
-    try
-    {
+    try {
         driver.findElement(By.xpath("//*[@id='searchResults']/a"));
         console.log("products page >> found..");
         return true;
     }
-    catch(Exception)
-    {
+    catch (Exception) {
         console.log("can not extract products page >> wait..");
         return false;
     }
-    finally
-    {
+    finally {
         console.log("products page >> finally set 30sec wait..");
         // driver.quit();
         // driver = getDriver();
@@ -208,19 +204,22 @@ var getVariations = function (webDriver, data, cb) {
 
 
 var download = function (uri, filename, callback) {
+    try {
+        request(uri).on('error',function(err){
+            console.log('error: %s', err);
+        }).pipe(fs.createWriteStream(filename)).on('close', callback);
+        /*request.head(uri, function (err, res, body) {
+                console.log(uri);
+               //console.log('content-type:', res.headers['content-type']);
 
-    request.head(uri, function (err, res, body) {
-
-            // console.log('uri:', uri);
-            // console.log('header:', res.headers);
-
-            // console.log('content-type:', res.headers['content-type']);
-            // console.log('content-length:', res.headers['content-length']);
+                //console.log('content-length:', res.headers['content-length']);
 
 
-            request(uri).pipe(fs.createWriteStream(filename)).on('close', callback);
-
-    });
+            }
+        );*/
+    } catch (e) {
+        console.log(e);
+    }
 };
 
 var saveImages = function (v, cb) {
@@ -238,7 +237,6 @@ var saveImages = function (v, cb) {
     console.log("dir:" + dir);
     console.log("file:" + file);
     mkdirp(dir, function (err) {
-        //console.log(">>>>>>>>>> innnnnnnnnnn  mkdirp");
         if (err) {
             cb(err);
             console.log(err);
@@ -299,8 +297,8 @@ var populateProductsWithFilter = function (driver, maxPage, node) {
                     //isElementPresent(driver)
                     driver.sleep(1000);
                     driver.findElements(By.xpath("//*[@id='searchResults']/a"))
-                    //driver.sleep(1000)
-                    .then(function (products) {
+                        //driver.sleep(1000)
+                        .then(function (products) {
                             if (index >= runto) {
                                 console.log("total product in page:" + products.length);
 
@@ -391,7 +389,7 @@ var populateProductsWithFilter = function (driver, maxPage, node) {
                                                         }
                                                     });
                                             }
-                                            catch ( e) {
+                                            catch (e) {
                                                 if (e.getMessage().contains("element is not attached")) {
                                                     breakIt = false;
                                                     console.log("Errors  catched!! in page:" + errorsIdx);
@@ -406,10 +404,10 @@ var populateProductsWithFilter = function (driver, maxPage, node) {
                                 });
                             }
                         }, function (err) {
-                         console.error("can not extract products page " + index + " error: " + err);
+                            console.error("can not extract products page " + index + " error: " + err);
                             callback(err);
                         })
-                    .then(function () {
+                        .then(function () {
                             async.parallel(tasks, function (err) {
                                 if (err) {
                                     //console.error("populateProductsWithFilter: " + err);
@@ -423,7 +421,10 @@ var populateProductsWithFilter = function (driver, maxPage, node) {
                                     console.log("start populating page: #" + index + "\/" + maxPage);
                                     console.log("Total items update:" + output.length);
                                     output.forEach(function (p) {
-                                        Product.findByIdAndUpdate(p._id, p, {new: true, upsert: true}, function (err, p1) {
+                                        Product.findByIdAndUpdate(p._id, p, {
+                                            new: true,
+                                            upsert: true
+                                        }, function (err, p1) {
                                             if (err) {
                                                 console.error("error updating product: " + err);
                                                 return callback(err);
@@ -444,11 +445,9 @@ var populateProductsWithFilter = function (driver, maxPage, node) {
                                         : By.xpath('//*[@id="resultWrap"]/div[2]/div/a[3]');
 
                                     var breakIt = true;
-                                    while (true)
-                                    {
+                                    while (true) {
                                         breakIt = true;
-                                        try
-                                        {
+                                        try {
                                             // write your code here
                                             driver.findElement(selector)
                                                 .then(function (p) {
@@ -471,8 +470,7 @@ var populateProductsWithFilter = function (driver, maxPage, node) {
                                                         callback();
                                                     }
                                                 });
-                                        } catch (e)
-                                        {
+                                        } catch (e) {
                                             if (e.getMessage().contains("element is not attached")) {
                                                 breakIt = false;
                                             }
@@ -484,7 +482,7 @@ var populateProductsWithFilter = function (driver, maxPage, node) {
                                 }
                             });
                         });
-                } catch ( e) {
+                } catch (e) {
                     if (e.getMessage().contains("element is not attached")) {
                         console.error("catched - Error in searchResults : " + e.getMessage());
                         break1 = false;
@@ -509,17 +507,17 @@ var populateProductsWithFilter = function (driver, maxPage, node) {
     );
 }
 
-var updateNodelastpage = function(index, node){
+var updateNodelastpage = function (index, node) {
 
 
-        Node.findById(node._id, function (err, upnode) {
+    Node.findById(node._id, function (err, upnode) {
+        if (err) return handleError(err);
+
+        upnode.lastPageLoaded = index;
+        upnode.save(function (err) {
             if (err) return handleError(err);
-
-            upnode.lastPageLoaded = index;
-            upnode.save(function (err) {
-                if (err) return handleError(err);
-            });
         });
+    });
 }
 
 var getDriver = function () {
@@ -624,27 +622,24 @@ exports.buildCategoryTree = function () {
             console.log("============== Start new page queue shift  ====================");
             console.log("isRoot: " + isRoot);
             console.log("item url: " + item.url);
-            var breakIt = true;
-            while (true)
-            {
-                try {
-                      // write your code here
-                     breakIt = true;
-                     driver.get(item.url)
-                     driver.sleep(800)
 
 
+            driver.get(item.url)
+            driver.sleep(800)
 
+                .then(function () {
+                    return driver.findElements(By.xpath('//*[@id="naviCenter"]/h4'));
+                }, function (err) {
+                    console.log("[id=naviCenter]/h4 not found: " + err);
+                })
 
-                        .then(function () {
-                            return driver.findElements(By.xpath('//*[@id="naviCenter"]/h4'));
-                        }, function (err) {
-                            console.log("[id=naviCenter]/h4 not found: "  + err);
-                        })
-
-                        .then(function (elements) {
-
-                               elements.forEach(function (elem) {
+                .then(function (elements) {
+                    var breakIt = true;
+                    while (true) {
+                        breakIt = true;
+                        try {
+                            // write your code here
+                            elements.forEach(function (elem) {
 
                                 var type;
                                 var isMulti;
@@ -656,33 +651,33 @@ exports.buildCategoryTree = function () {
                                         tempIgnoreList[type] = type;
                                         console.log("============== Start element ====================");
                                         console.log("category element title = %s ", type);
-                                    }/*, function (err) {
-                                        console.log("Error in category element title = %s \n ERROR:%s", type,err);
-
-                                    }*/)
+                                    }, function (err) {
+                                        console.log("Error in category element title = %s \n ERROR:%s", type, err);
+                                        callback();
+                                    })
 
                                     .then(function () {
                                         return elem.findElement(By.xpath("./following-sibling::div[1]"));
-                                    }/*, function (err) {
-                                        console.log("Errrorrrrr-2 \n ERROR:%s", type,err);
-
-                                    }*/)
-
-                                   /* .then(function (s) {
-                                        return s.getAttribute('class');
                                     }, function (err) {
-                                        console.log("Errrorrrrr-3 \n ERROR:%s", type,err);
-
+                                        console.log("Errrorrrrr-2 \n ERROR:%s", type, err);
+                                        callback();
                                     })
 
-                                    .then(function (value) {
-                                        isMulti = value.indexOf('nwMulti');
-                                        console.log("isMulti = " + isMulti);
-                                    }, function (err) {
-                                        console.log("Errrorrrrr-4 \n ERROR:%s", type,err);
-                                        isMulti = false;
+                                    /* .then(function (s) {
+                                     return s.getAttribute('class');
+                                     }, function (err) {
+                                     console.log("Errrorrrrr-3 \n ERROR:%s", type,err);
 
-                                    })*/
+                                     })
+
+                                     .then(function (value) {
+                                     isMulti = value.indexOf('nwMulti');
+                                     console.log("isMulti = " + isMulti);
+                                     }, function (err) {
+                                     console.log("Errrorrrrr-4 \n ERROR:%s", type,err);
+                                     isMulti = false;
+
+                                     })*/
 
                                     .then(function () {
                                         if (item.ignoreList[type]) {
@@ -691,10 +686,10 @@ exports.buildCategoryTree = function () {
                                         }
                                         console.log("Type Don't exist in item.ignoreList[type]");
                                         return elem.findElements(By.xpath("./following-sibling::div[1]/a"));
-                                    }/*, function (err) {
-                                        console.log("Errrorrrrr-5 \n ERROR:%s", type,err);
-
-                                    }*/)
+                                    }, function (err) {
+                                        console.log("Errrorrrrr-5 \n ERROR:%s", type, err);
+                                        callback();
+                                    })
 
                                     .then(function (all) {
                                         all.forEach(function (option) {
@@ -706,17 +701,17 @@ exports.buildCategoryTree = function () {
                                                     var m = text.match(filterRegex);
                                                     node._id = (!m) ? text : m[1];
                                                     node.children = [];
-                                                }/*, function (err) {
+                                                }, function (err) {
                                                     hasError = true;
                                                     console.log("can not extract node text of type " + type + " error: " + err);
-                                                }*/)
+                                                })
 
                                                 .then(function () {
                                                     return option.getAttribute('href');
-                                                }/*, function (err) {
+                                                }, function (err) {
                                                     hasError = true;
                                                     console.error("can not resolve href of " + node._id + " error: " + err);
-                                                }*/)
+                                                })
 
                                                 .then(function (url) {
                                                     if (!hasError) {
@@ -739,48 +734,43 @@ exports.buildCategoryTree = function () {
                                                         queue.push(node);
                                                     }
                                                     //console.log(link);
-                                                }/*, function (err) {
-                                                    console.log("Errrorrrrr-6 \n ERROR:%s", type,err);
+                                                }, function (err) {
+                                                    console.log("Errrorrrrr-6 \n ERROR:%s", type, err);
 
-                                                }*/);
+                                                });
                                         });
                                     }/*, function (err) {
-                                        console.log("fail in type: " + type + " errors: " + err);
-
-                                    }*/);
+                                     console.log("fail in type: " + type + " errors: " + err);
+                                     }*/);
                             });
 
-                        }/*, function (err) {
-                            console.error("fail in page " + item.url + " error: " + err);
-                        }*/)
+                        }
+                        catch (e) {
+                            if (e.getMessage().contains("element is not attached")) {
+                                breakIt = false;
+                                console.log("stale element error!!!!!!!!! >>>> = %s ", e.getMessage());
+                            }
+                        }
+                        if (breakIt) {
+                            break;
+                        }
 
-                        .then(function () {
-
-                            updateIgnoreList(queue, tempIgnoreList);
-                            console.log("please wait while collecting category info may take few minutes...");
-                            console.log("queue.length =" + queue.length);
-                            callback();
-                            }/*, function (err) {
-                            console.log("Errrorrrrr-7 \n ERROR:%s", type,err);
-
-                        }*/)/*, function (err) {
-                        console.log("Errrorrrrr-8 \n ERROR:%s", type,err);
-
-                    }*/
-
-                }
-                catch (e) {
-                    if (e.getMessage().contains("element is not attached")) {
-                        breakIt = false;
-                        console.log("stale element error!!!!!!!!! >>>> = %s ", e.getMessage());
                     }
-                }
-                if (breakIt) {
-                    break;
-                }
+                }/*, function (err) {
+                 console.error("fail in page " + item.url + " error: " + err);
+                 }*/)
 
-            }
+                .then(function () {
 
+                    updateIgnoreList(queue, tempIgnoreList);
+                    console.log("please wait while collecting category info may take few minutes...");
+                    console.log("queue.length =" + queue.length);
+                    callback();
+                }, function (err) {
+                    console.log("Errrorrrrr-7 \n ERROR:%s", type, err);
+                }), function (err) {
+                console.log("Errrorrrrr-8 \n ERROR:%s", type, err);
+            };
 
         },
         function () {
@@ -875,7 +865,6 @@ exports.populateProducts = function (query) {
         }
 
 
-
         async.series(tasks, function (err) {
             if (err) {
                 return console.error("error occurs while executing populating: " + err);
@@ -922,7 +911,8 @@ exports.updateProductDetails = function (query) {
                     })
                     .then(function (e) {
                         return e.getAttribute('src');
-                    }, function (err) { ignore = true;
+                    }, function (err) {
+                        ignore = true;
                         console.error("updateProductDetails: can not extract brand for product._id " + product._id);
                         //cb1(err);
                     })
@@ -978,29 +968,29 @@ exports.updateProductDetails = function (query) {
                             updated.videomp4 = updated.videoflv = 'none';
                         }
                     })
-                                .then(function () { // description
-                                        return driver.findElement(By.xpath("//*[@id='productDescription']/div"));
-                                    })
-                                        .then(function (e) {
-                                            return e.getAttribute('innerHTML');
-                                        }, function (err) {
-                                            ignore = true;
-                                            console.error("updateProductDetails: can not extract description for product._id " + product._id + " error: " + err);
-                                            //cb1(err);
-                                        })
-                                        .then(function (description) {
-                                            if (!ignore) {
-                                                var tmp = description.replace(/zappos.com/g, 'mooza.club');
-                                                updated.description = tmp.replace(/Zappos.com/g, 'Mooza.club');
-                                            }
-                                        })
-                                        .then(function () {
-                                            if (!ignore) {
+                    .then(function () { // description
+                        return driver.findElement(By.xpath("//*[@id='productDescription']/div"));
+                    })
+                    .then(function (e) {
+                        return e.getAttribute('innerHTML');
+                    }, function (err) {
+                        ignore = true;
+                        console.error("updateProductDetails: can not extract description for product._id " + product._id + " error: " + err);
+                        //cb1(err);
+                    })
+                    .then(function (description) {
+                        if (!ignore) {
+                            var tmp = description.replace(/zappos.com/g, 'mooza.club');
+                            updated.description = tmp.replace(/Zappos.com/g, 'Mooza.club');
+                        }
+                    })
+                    .then(function () {
+                        if (!ignore) {
 
-                                                var breakIt = true;
-                                                while (true) {
-                                                    breakIt = true;
-                                                    try {
+                            var breakIt = true;
+                            while (true) {
+                                breakIt = true;
+                                try {
                                     // write your code here
                                     getVariations(driver, updated, function (err) {
                                         ignore = true;
@@ -1098,19 +1088,19 @@ exports.fetchImages = function (query) {
                         });
                     });
                 }
-             /*   if (updated.videoflv !== 'none') {
-                    tasks1.push(function (cb2) {
-                        saveImages(updated.videoflv, function (err, file) {
-                            if (err)
-                                return cb2(err);
+                /*   if (updated.videoflv !== 'none') {
+                 tasks1.push(function (cb2) {
+                 saveImages(updated.videoflv, function (err, file) {
+                 if (err)
+                 return cb2(err);
 
-                            var loc = file.indexOf('assets');
-                            var fstr1 = slash(file.slice(loc));
-                            updated.videoflv = fstr1;
-                            cb2();
-                        });
-                    });
-                }*/
+                 var loc = file.indexOf('assets');
+                 var fstr1 = slash(file.slice(loc));
+                 updated.videoflv = fstr1;
+                 cb2();
+                 });
+                 });
+                 }*/
 
                 if (updated.brand) {
 
