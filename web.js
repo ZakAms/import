@@ -47,23 +47,30 @@ var getVariations = function (webDriver, data, cb) {
         name: '',
         values: []
     };
+   // console.log("getVariations 1");
 
     var currentIndex = 0;
     var error = null;
     var hasD4 = true;
     var D4 = null;
+    var Skip =false;
 
     return webDriver.findElements(By.xpath("//select[@class='btn secondary']"))
         .then(function (selects) {
+            //console.log("getVariations 2");
+            if( selects.length == 3)
+                Skip = true;
 
             selects.forEach(function (s) {
                 s.getAttribute('id')
                     .then(function (id) {
                         variation.name = id;
                     }, function (err) {
+                        console.log("getVariations no optionId");
                         cb(err);
                     })
                     .then(function () {
+
                         return s.findElements(By.tagName('option'));
                     })
                     .then(function (options) {
@@ -156,48 +163,81 @@ var getVariations = function (webDriver, data, cb) {
             });
         },
         function (err) {
+            console.log("getVariations 3");
             cb(err);
         })
         // extract d4 variation
         .then(function () {
-            return webDriver.findElement(By.xpath('//*[@id="d4"]'));
+            if(!Skip) {
+                //console.log("getVariations 4");
+                return webDriver.findElement(By.xpath('//*[@id="d4"]'));
+            }
+            return;
         }, function (err) {
+            //cb(err);
+            console.log("getVariations 5 : no id d4 found");
         })
         .then(function (d4) {
-            D4 = d4;
-            if (hasD4)
-                return d4.getAttribute('id');
+            if(!Skip) {
+                //console.log("getVariations 6");
+                D4 = d4;
+                if (hasD4)
+                    return d4.getAttribute('id');
+            }
         })
         .then(function (id) {
+            if (!Skip) {
+                //console.log("getVariations 7");
+
             variation = {
                 name: id,
                 values: []
             };
+        }
         })
         .then(function () {
-            if (D4)
-                return webDriver.findElement(By.xpath('//*[@id="dimension-width"]/p'));
+            if (!Skip) {
+                //console.log("getVariations 8");
+                if (D4) {
+                    //console.log("getVariations 8.1");
+                    return webDriver.findElement(By.xpath('//*[@id="dimension-width"]/p'));
+                }
+            }
         }, function (err) {
+            console.log("getVariations 9");
         })
         .then(function (note) {
-            if (D4)
-                return note.getText();
+            if(!Skip) {
+                //console.log("getVariations 10");
+                if (D4)
+                    return note.getText();
+            }
         })
         .then(function (text) {
-            if (D4) {
-                variation.values.push({text: text, value: null});
+            if(!Skip) {
+                //console.log("getVariations 11");
+                if (D4) {
+                    variation.values.push({text: text, value: null});
+                }
             }
         })
         .then(function () {
-            if (D4)
-                return D4.getAttribute('value');
+            if(!Skip) {
+                //console.log("getVariations 12");
+                if (D4)
+                    return D4.getAttribute('value');
+            }
         })
         .then(function (value) {
-            if (D4) {
-                currentIndex = variation.values.length - 1;
-                variation.values[currentIndex].value = value;
+            if(!Skip) {
+                //console.log("getVariations 13");
+                if (D4) {
+                    currentIndex = variation.values.length - 1;
+                    variation.values[currentIndex].value = value;
+                }
             }
         }).then(function () {
+            //console.log("getVariations 14");
             data.variations.push(variation);
         });
 }
@@ -209,14 +249,14 @@ var download = function (uri, filename, callback) {
             console.log('error: %s', err);
         }).pipe(fs.createWriteStream(filename)).on('close', callback);
         /*request.head(uri, function (err, res, body) {
-                console.log(uri);
-               //console.log('content-type:', res.headers['content-type']);
+         console.log(uri);
+         //console.log('content-type:', res.headers['content-type']);
 
-                //console.log('content-length:', res.headers['content-length']);
+         //console.log('content-length:', res.headers['content-length']);
 
 
-            }
-        );*/
+         }
+         );*/
     } catch (e) {
         console.log(e);
     }
@@ -231,7 +271,7 @@ var saveImages = function (v, cb) {
         console.log(">>>>>>>>>>" + v);
     }
 
-    var dir = path.join(path.resolve('./public'), pathname.replace(f, ''));
+    var dir = path.join(path.resolve('assets/public'), pathname.replace(f, ''));
     var file = path.join(dir, f);
 
     console.log("dir:" + dir);
@@ -276,7 +316,7 @@ var paginationInfo = function (driver) {
 var populateProductsWithFilter = function (driver, maxPage, node) {
 
     var filter = node.filter + ":" + node._id;
-    var index = 1;
+    var index = node.lastPageLoaded + 1;
     var runto = node.lastPageLoaded;
 
     if (maxPage <= runto) {
@@ -392,7 +432,7 @@ var populateProductsWithFilter = function (driver, maxPage, node) {
                                             catch (e) {
                                                 if (e.getMessage().contains("element is not attached")) {
                                                     breakIt = false;
-                                                    console.log("Errors  catched!! in page:" + errorsIdx);
+                                                    console.log("Errors  catch!! in page:" + errorsIdx);
                                                 }
                                             }
                                             if (breakIt) {
@@ -532,8 +572,8 @@ var getDriver = function () {
 }
 
 var isRootScan = function (item) {
-    return (item.url === "http://www.zappos.com/null-page1/.zso?p=0&s=goliveRecentSalesStyle/desc/"); //All
-    //return (item.url === "http://www.zappos.com/women-coats-outerwear~5#!/clothing~E"); //Clothing
+    //return (item.url === "http://www.zappos.com/null-page1/.zso?p=0&s=goliveRecentSalesStyle/desc/"); //All
+    return (item.url === "http://www.zappos.com/womens-clothing~6H#!/clothing~E"); //Clothing
     //return (item.url === "http://www.zappos.com/siwy-denim-women-jeans/CKvXARDI1wE6AvUDWgKpHXoClAWCAQOs1wXAAQHiAgYBCxgCDwc.zso?s=goliveRecentSalesStyle/desc/#!/shoes~3Y"); //Shoes
     //return (item.url === "http://www.zappos.com/siwy-denim-women-jeans/CKvXARDI1wE6AvUDWgKpHXoClAWCAQOs1wXAAQHiAgYBCxgCDwc.zso?s=goliveRecentSalesStyle/desc/#!/bags~2q"); //Bags
     //return (item.url === "http://www.zappos.com/siwy-denim-women-jeans/CKvXARDI1wE6AvUDWgKpHXoClAWCAQOs1wXAAQHiAgYBCxgCDwc.zso?s=goliveRecentSalesStyle/desc/#!/accessories~4?s=goliveRecentSalesStyle/desc/"); //Accessories
@@ -590,7 +630,7 @@ var prepareNodesForUpdate = function (roots) {
             console.log("create root._id = %s successfully", root._id);
         });
         console.log("products filters completed successfully.");
-        process.exit(0);
+
     });
 
 }
@@ -601,7 +641,7 @@ exports.buildCategoryTree = function () {
     var roots = [];
 
     var queue = [{
-        url: "http://www.zappos.com/null-page1/.zso?p=0&s=goliveRecentSalesStyle/desc/",
+        url: "http://www.zappos.com/womens-clothing~6H#!/clothing~E",
 
         ignoreList: {
             //GENDER: 'GENDER',
@@ -820,11 +860,13 @@ exports.populateProducts = function (query) {
                         console.log(">>>>>>" + index);
 
                         var q = [node];
+                        var s = '?p='+ (parseInt(node.lastPageLoaded) + 1);
                         console.log("==================================");
                         console.log("node._id = %s  node.filter = %s", node._id, node.filter);
                         console.log("node.url = %s ", node.url);
                         console.log("node.children = %s ", node.children);
                         console.log("==================================");
+                        node.url = node.url.concat(s);
                         while (q.length > 0) {
                             var n = q.shift();
 
@@ -917,6 +959,8 @@ exports.updateProductDetails = function (query) {
                         //cb1(err);
                     })
                     .then(function (value) {
+                        //console.log(" brand :%s" + value);
+
                         if (!ignore)
                             updated.brand = value;
                     })
@@ -955,10 +999,10 @@ exports.updateProductDetails = function (query) {
                     })
                     .then(function (video) {
                         return video.getAttribute('href');
-                    }, function (err) {
+                    }, function () {
                         ignore2 = true;
                         //console.error("updateProductDetails: no video for product._id " + product._id + " error: " + err);
-                        console.error("updateProductDetails: no video for product._id " + product._id);
+                        console.log("updateProductDetails: no video for product._id " + product._id);
                     })
                     .then(function (videoHref) {
                         if (!ignore2) {
@@ -986,33 +1030,23 @@ exports.updateProductDetails = function (query) {
                     })
                     .then(function () {
                         if (!ignore) {
-
-                            var breakIt = true;
-                            while (true) {
-                                breakIt = true;
-                                try {
-                                    // write your code here
-                                    getVariations(driver, updated, function (err) {
-                                        ignore = true;
-                                        console.error("updateProductDetails: can not extract variations for product._id " + product._id + " error: " + err);
-                                        //cb1(err);
-                                    });
-                                } catch (e) {
-                                    if (e.getMessage().contains("element is not attached")) {
-                                        breakIt = false;
-                                        console.error("catch: can not extract variations");
-                                    }
-                                }
-                                if (breakIt) {
-                                    break;
-                                }
-
-                            }
+                            //console.log("updateProductDetails 1");
+                           getVariations(driver, updated, function (err) {
+                             ignore = true;
+                             console.error("updateProductDetails: can not extract variations for product._id " + product._id + " error: " + err);
+                              //cb1(err);
+                             });
+                            //console.log("updateProductDetails 2");
 
                         }
+                    }, function (err) {
+                        ignore = true;
+                        console.log("updateProductDetails 3");
+                        console.error("updateProductDetails: variation error: " + err);
+                        //cb1(err);
                     })
                     .then(function () {
-
+                        //console.log("updateProductDetails 4");
                         updated.hasDetails = true;
                         updated.hasError = ignore;
                         updated.isLocked = ignore;
@@ -1021,9 +1055,11 @@ exports.updateProductDetails = function (query) {
                             if (err) {
                                 console.error("updateProductDetails: error occurs while trying update details of product._id: " + product._id);
                                 //return cb1(err);
+                                console.log("updateProductDetails 5");
                                 return cb1();
                             }
 
+                            //console.log("updateProductDetails 6");
                             console.log("updateProductDetails: completed successfully for product._id:%s (%s/%s)", product._id, currentIdx, total);
                             cb1();
                         });
@@ -1088,19 +1124,19 @@ exports.fetchImages = function (query) {
                         });
                     });
                 }
-                /*   if (updated.videoflv !== 'none') {
-                 tasks1.push(function (cb2) {
-                 saveImages(updated.videoflv, function (err, file) {
-                 if (err)
-                 return cb2(err);
+                if (updated.videoflv !== 'none') {
+                    tasks1.push(function (cb2) {
+                        saveImages(updated.videoflv, function (err, file) {
+                            if (err)
+                                return cb2(err);
 
-                 var loc = file.indexOf('assets');
-                 var fstr1 = slash(file.slice(loc));
-                 updated.videoflv = fstr1;
-                 cb2();
-                 });
-                 });
-                 }*/
+                            var loc = file.indexOf('assets');
+                            var fstr1 = slash(file.slice(loc));
+                            updated.videoflv = fstr1;
+                            cb2();
+                        });
+                    });
+                }
 
                 if (updated.brand) {
 
@@ -1119,20 +1155,25 @@ exports.fetchImages = function (query) {
 
                 updated.variations.forEach(function (variation, i) {
                     variation.values.forEach(function (value, k) {
+                        try{
+                            if (value.searchImg.indexOf('-p-LARGE_SEARCH.jpg') > 0) {
 
-                        if (value.searchImg.indexOf('-p-LARGE_SEARCH.jpg') > 0) {
+                                tasks1.push(function (cb2) {
+                                    saveImages(value.searchImg, function (err, file) {
+                                        if (err)
+                                            return cb2(err);
 
-                            tasks1.push(function (cb2) {
-                                saveImages(value.searchImg, function (err, file) {
-                                    if (err)
-                                        return cb2(err);
-
-                                    var loc = file.indexOf('assets');
-                                    var fstr = slash(file.slice(loc));
-                                    updated.variations[i].values[k].searchImg = fstr;
-                                    cb2();
+                                        var loc = file.indexOf('assets');
+                                        var fstr = slash(file.slice(loc));
+                                        updated.variations[i].values[k].searchImg = fstr;
+                                        cb2();
+                                    });
                                 });
-                            });
+                            }
+                        }
+                        catch(e)
+                        {
+                            console.log(e);
                         }
 
                         value.thumbnails.forEach(function (thumb, j) {
@@ -1181,7 +1222,7 @@ exports.fetchImages = function (query) {
                                     if (err)
                                         return cb2(err);
 
-                                    //console.log("image file:", file);
+
                                     var loc = file.indexOf('assets');
                                     var fstr = slash(file.slice(loc));
                                     updated.variations[i].values[k].mobileImg[index] = fstr;
